@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shares Hisab</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Hem Securities</p>
+        <h1>Shares Hisab</h1>
+        <p class="header-subtitle">Quick calculation for share deals and application deals.</p>
+      </div>
+      <div class="header-actions">
+        <button id="printBtn" class="icon-btn" title="Print report" type="button">Print</button>
+        <button id="exportBtn" class="icon-btn" title="Export CSV" type="button">CSV</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="panel input-panel" aria-labelledby="entryTitle">
+        <div class="panel-head">
+          <div>
+            <h2 id="entryTitle">New Entry</h2>
+            <p>First select the deal type, then enter the numbers.</p>
+          </div>
+          <div class="segmented" role="tablist" aria-label="Entry type">
+            <button class="segment active" type="button" data-mode="simple">Shares</button>
+            <button class="segment" type="button" data-mode="application">Applications</button>
+          </div>
+        </div>
+
+        <form id="entryForm" autocomplete="off">
+          <div class="form-section">
+            <div class="section-title">
+              <span>1</span>
+              <strong>Basic details</strong>
+            </div>
+            <div class="grid two">
+              <label>
+                Person name
+                <input id="personName" name="personName" placeholder="Example: B person" required />
+              </label>
+              <label>
+                Stock / IPO name
+                <input id="stockName" name="stockName" placeholder="Example: ABC IPO" />
+              </label>
+            </div>
+          </div>
+
+          <div id="simpleFields" class="mode-fields">
+            <div class="form-section">
+              <div class="section-title">
+                <span>2</span>
+                <strong>Share sale details</strong>
+              </div>
+              <div class="grid three">
+                <label>
+                  Number of shares
+                  <input id="simpleShares" inputmode="decimal" type="number" min="0" step="1" placeholder="1000" />
+                </label>
+                <label>
+                  Listing price
+                  <input id="simpleBasePrice" inputmode="decimal" type="number" min="0" step="0.01" placeholder="75.20" />
+                </label>
+                <label>
+                  Sold price
+                  <input id="simpleSoldPrice" inputmode="decimal" type="number" min="0" step="0.01" placeholder="75.50" />
+                </label>
+              </div>
+              <p class="formula-text">Final amount = shares x (sold price - listing price)</p>
+            </div>
+          </div>
+
+          <div id="applicationFields" class="mode-fields hidden">
+            <div class="form-section">
+              <div class="section-title">
+                <span>2</span>
+                <strong>Application lines</strong>
+              </div>
+              <div class="section-head-row">
+                <p class="formula-text">Add applications first. After that, add another application or direct shares if needed.</p>
+                <div class="line-actions">
+                  <button class="secondary small-btn" id="addApplicationLineBtn" type="button">Add application</button>
+                  <button class="secondary small-btn" id="addShareLineBtn" type="button" disabled>Add shares</button>
+                </div>
+              </div>
+              <div class="application-lines" id="applicationRows"></div>
+              <div class="line-example">
+                Example: 50 applications at Rs 2800 can be one line. Extra direct shares can be added as a share line.
+              </div>
+              <p class="formula-text">Application line = applications x shares per application x (listing/sold price - cost price) - application cost</p>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">
+              <span id="notesStep">3</span>
+              <strong>Notes</strong>
+            </div>
+            <label>
+              Remarks
+              <textarea id="notes" rows="3" placeholder="Optional remarks"></textarea>
+            </label>
+          </div>
+
+          <div class="preview" aria-live="polite">
+            <div>
+              <span>Total shares</span>
+              <strong id="previewShares">0</strong>
+            </div>
+            <div>
+              <span>Gross profit</span>
+              <strong id="previewGross">Rs 0.00</strong>
+            </div>
+            <div>
+              <span>Application cost</span>
+              <strong id="previewCharges">Rs 0.00</strong>
+            </div>
+            <div class="highlight">
+              <span>Final amount</span>
+              <strong id="previewFinal">Rs 0.00</strong>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="secondary" id="resetBtn" type="button">Clear</button>
+            <button class="primary" id="submitBtn" type="submit">Add entry</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel report-panel" aria-labelledby="reportTitle">
+        <div class="panel-head">
+          <div>
+            <h2 id="reportTitle">Hisab Report</h2>
+            <p id="entryCount">No entries yet</p>
+          </div>
+          <button id="clearAllBtn" class="danger" type="button">Clear all</button>
+        </div>
+
+        <div class="totals">
+          <div>
+            <span>Total final amount</span>
+            <strong id="totalFinal">Rs 0.00</strong>
+          </div>
+          <div>
+            <span>Total gross profit</span>
+            <strong id="totalGross">Rs 0.00</strong>
+          </div>
+          <div>
+            <span>Total charges</span>
+            <strong id="totalCharges">Rs 0.00</strong>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Person</th>
+                <th>Type</th>
+                <th>Shares</th>
+                <th>Gross</th>
+                <th>Charges</th>
+                <th>Final</th>
+                <th class="no-print">Action</th>
+              </tr>
+            </thead>
+            <tbody id="entriesBody">
+              <tr class="empty-row">
+                <td colspan="8">Add the first entry to start the hisab.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="print-details" id="printDetails"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
