@@ -9,8 +9,13 @@ const dom = {
   addShareLineBtn: document.querySelector("#addShareLineBtn"),
   entriesBody: document.querySelector("#entriesBody"),
   entryCount: document.querySelector("#entryCount"),
+  personSummaryBody: document.querySelector("#personSummaryBody"),
+  stockSummaryBody: document.querySelector("#stockSummaryBody"),
   printDetails: document.querySelector("#printDetails"),
   submitBtn: document.querySelector("#submitBtn"),
+  calculationModal: document.querySelector("#calculationModal"),
+  calculationSubtitle: document.querySelector("#calculationSubtitle"),
+  calculationBody: document.querySelector("#calculationBody"),
 };
 
 const formatters = {
@@ -53,6 +58,45 @@ function formatMoney(amount) {
 
 function formatNumber(amount) {
   return formatters.number.format(amount || 0);
+}
+
+function getSignedAmount(entry) {
+  return getDirectionMultiplier(entry.direction) * (Number(entry.finalAmount) || 0);
+}
+
+function getDirectionMultiplier(direction) {
+  return direction === "buy" ? 1 : -1;
+}
+
+function getDirectionLabel(direction) {
+  return direction === "buy" ? "Bought from person" : "Sold to person";
+}
+
+function getEntryResultStatus(entry) {
+  const amount = getSignedAmount(entry);
+
+  if (amount > 0) return "We will get";
+  if (amount < 0) return "We have to give";
+  return "Settled";
+}
+
+function getEntryResultStatusWithAmount(entry) {
+  const amount = getSignedAmount(entry);
+  if (amount === 0) return "Settled, no money to give or receive";
+  const personName = entry.personName || "person";
+  return amount > 0 ? `${personName} will give us ${formatMoney(Math.abs(amount))}` : `We will give ${personName} ${formatMoney(Math.abs(amount))}`;
+}
+
+function getBalanceStatus(amount) {
+  if (amount > 0) return "We will get";
+  if (amount < 0) return "We have to give";
+  return "Settled";
+}
+
+function getBalanceClass(amount) {
+  if (amount > 0) return "money-positive";
+  if (amount < 0) return "money-negative";
+  return "";
 }
 
 function createId() {
@@ -264,7 +308,7 @@ function calculateEntryTotals() {
     (sum, entry) => {
       sum.gross += entry.gross;
       sum.charges += entry.charges;
-      sum.finalAmount += entry.finalAmount;
+      sum.finalAmount += getSignedAmount(entry);
       return sum;
     },
     { gross: 0, charges: 0, finalAmount: 0 },
@@ -275,10 +319,11 @@ function calculateEntryTotals() {
 function updatePreview() {
   updateLineButtons();
   const result = calculateCurrent();
+  const signedAmount = getDirectionMultiplier(textValue("#transactionType") || "sell") * result.finalAmount;
   document.querySelector("#previewShares").textContent = formatNumber(result.shares);
   document.querySelector("#previewGross").textContent = formatMoney(result.gross);
   document.querySelector("#previewCharges").textContent = formatMoney(result.charges);
-  document.querySelector("#previewFinal").textContent = formatMoney(result.finalAmount);
+  document.querySelector("#previewFinal").textContent = formatMoney(signedAmount);
 }
 
 function renderEntries() {
@@ -289,15 +334,17 @@ function renderEntries() {
   document.querySelector("#totalGross").textContent = formatMoney(totals.gross);
   document.querySelector("#totalCharges").textContent = formatMoney(totals.charges);
   dom.entryCount.textContent = state.entries.length === 1 ? "1 entry" : `${state.entries.length} entries`;
+  renderBalanceSummaries();
   renderPrintDetails(totals);
 }
 
 function renderEmptyRow() {
-  return '<tr class="empty-row"><td colspan="8">Add the first entry to start the hisab.</td></tr>';
+  return '<tr class="empty-row"><td colspan="10">Add the first entry to start the hisab.</td></tr>';
 }
 
 function renderEntryRow(entry) {
-  const moneyClass = entry.finalAmount >= 0 ? "money-positive" : "money-negative";
+  const signedAmount = getSignedAmount(entry);
+  const moneyClass = getBalanceClass(signedAmount);
   const selectedClass = entry.id === state.selectedEntryId ? "selected-entry" : "";
 
   return `
@@ -305,17 +352,190 @@ function renderEntryRow(entry) {
       <td>${entry.date}</td>
       <td>
         <strong>${escapeHtml(entry.personName)}</strong>
-        <div class="entry-meta">${escapeHtml(entry.stockName || "-")}</div>
         ${entry.notes ? `<div class="entry-meta">${escapeHtml(entry.notes)}</div>` : ""}
       </td>
+      <td>${escapeHtml(entry.stockName || "-")}</td>
+      <td>${getDirectionLabel(entry.direction)}</td>
       <td>${entry.type}<div class="entry-meta">${escapeHtml(entry.details)}</div></td>
       <td>${formatNumber(entry.shares)}</td>
       <td>${formatMoney(entry.gross)}</td>
       <td>${formatMoney(entry.charges)}</td>
-      <td class="${moneyClass}">${formatMoney(entry.finalAmount)}</td>
-      <td class="no-print"><button class="delete-btn" type="button" data-id="${entry.id}">Delete</button></td>
+      <td class="${moneyClass}">${formatMoney(signedAmount)}<div class="entry-meta">${getEntryResultStatusWithAmount(entry)}</div></td>
+      <td class="no-print action-cell">
+        <button class="calc-btn" type="button" data-id="${entry.id}">Calculation</button>
+        <button class="delete-btn" type="button" data-id="${entry.id}">Delete</button>
+      </td>
     </tr>
   `;
+}
+
+function openCalculationDetails(entry) {
+  dom.calculationSubtitle.textContent = `${entry.personName} | ${entry.stockName || "-"} | ${getDirectionLabel(entry.direction)}`;
+  dom.calculationBody.innerHTML = renderCalculationDetails(entry);
+  dom.calculationModal.classList.remove("hidden");
+}
+
+function closeCalculationDetails() {
+  dom.calculationModal.classList.add("hidden");
+}
+
+function renderCalculationDetails(entry) {
+  const signedAmount = getSignedAmount(entry);
+  const settlementAmount = Math.abs(entry.finalAmount || 0);
+  const finalMeaning = getEntryResultStatusWithAmount(entry);
+  const signText =
+    signedAmount > 0
+      ? "we will receive money"
+      : signedAmount < 0
+        ? "we have to pay money"
+        : "zero, so it is settled";
+
+  return `
+    <div class="calc-summary">
+      <div><span>Total shares</span><strong>${formatNumber(entry.shares)}</strong></div>
+      <div><span>Gross profit</span><strong>${formatMoney(entry.gross)}</strong></div>
+      <div><span>Application cost</span><strong>${formatMoney(entry.charges)}</strong></div>
+      <div><span>Final settlement</span><strong class="${getBalanceClass(signedAmount)}">${formatMoney(signedAmount)}</strong></div>
+    </div>
+    <div class="calc-note ${getBalanceClass(signedAmount)}">${finalMeaning}</div>
+    ${entry.type === "Applications" ? renderApplicationCalculation(entry.lines || []) : renderShareCalculation(entry)}
+    <div class="calc-section">
+      <h3>Final net with direction</h3>
+      <p>Calculated difference: <strong>${formatMoney(entry.finalAmount)}</strong></p>
+      <p>Absolute amount: <strong>${formatMoney(settlementAmount)}</strong></p>
+      <p>Direction: <strong>${getDirectionLabel(entry.direction)}</strong></p>
+      <p>Final settlement: <strong>${finalMeaning}</strong></p>
+      <p>${signText}.</p>
+      <p>${renderDirectionReason(entry)}</p>
+    </div>
+  `;
+}
+
+function renderDirectionReason(entry) {
+  const personName = escapeHtml(entry.personName || "this person");
+
+  if (entry.direction === "sell") {
+    return `Rule: <strong>${personName}</strong> bought from us. If the difference is profit, ${personName} gets it and we give. If the difference is loss, ${personName} bears it and gives us.`;
+  }
+
+  if (entry.direction === "buy") {
+    return `Rule: we bought from <strong>${personName}</strong>. If the difference is profit, we get it. If the difference is loss, we bear it and give.`;
+  }
+
+  return "Rule: direction and profit/loss decide who gives money.";
+}
+
+function renderShareCalculation(entry) {
+  const difference = (entry.soldPrice || 0) - (entry.basePrice || 0);
+  const reason =
+    difference < 0
+      ? "Sold price is lower than listing price, so this is a loss."
+      : difference > 0
+        ? "Sold price is higher than listing price, so this is profit."
+        : "Sold price and listing price are equal, so there is no profit or loss.";
+
+  return `
+    <div class="calc-section">
+      <h3>Direct shares</h3>
+      <p>Shares: <strong>${formatNumber(entry.shares)}</strong></p>
+      <p>Listing price: <strong>${formatMoney(entry.basePrice)}</strong></p>
+      <p>Sold price: <strong>${formatMoney(entry.soldPrice)}</strong></p>
+      <p>Difference per share: <strong>${formatMoney(difference)}</strong></p>
+      <p>Formula: <strong>${formatNumber(entry.shares)} x (${formatMoney(entry.soldPrice)} - ${formatMoney(entry.basePrice)}) = ${formatMoney(entry.finalAmount)}</strong></p>
+      <p>Why: <strong>${reason}</strong></p>
+    </div>
+  `;
+}
+
+function renderApplicationCalculation(lines) {
+  if (lines.length === 0) {
+    return '<div class="calc-section"><h3>Lines</h3><p>No application/share lines saved for this entry.</p></div>';
+  }
+
+  return `
+    <div class="calc-section">
+      <h3>Line by line</h3>
+      ${lines.map(renderCalculationLine).join("")}
+    </div>
+  `;
+}
+
+function renderCalculationLine(line, index) {
+  if (line.kind === "shares") {
+    const difference = (line.soldPrice || 0) - (line.costPrice || 0);
+    return `
+      <div class="calc-line">
+        <h4>Line ${index + 1}: Direct shares</h4>
+        <p>Shares: <strong>${formatNumber(line.shares)}</strong></p>
+        <p>Difference per share: <strong>${formatMoney(line.soldPrice)} - ${formatMoney(line.costPrice)} = ${formatMoney(difference)}</strong></p>
+        <p>Gross: <strong>${formatNumber(line.shares)} x ${formatMoney(difference)} = ${formatMoney(line.gross)}</strong></p>
+        <p>Charges: <strong>${formatMoney(line.charges)}</strong></p>
+        <p>Line final: <strong>${formatMoney(line.finalAmount)}</strong></p>
+      </div>
+    `;
+  }
+
+  const difference = (line.soldPrice || 0) - (line.costPrice || 0);
+  return `
+    <div class="calc-line">
+      <h4>Line ${index + 1}: Application</h4>
+      <p>Total shares: <strong>${formatNumber(line.applications)} applications x ${formatNumber(line.sharesPerApplication)} shares = ${formatNumber(line.shares)}</strong></p>
+      <p>Difference per share: <strong>${formatMoney(line.soldPrice)} - ${formatMoney(line.costPrice)} = ${formatMoney(difference)}</strong></p>
+      <p>Gross: <strong>${formatNumber(line.shares)} x ${formatMoney(difference)} = ${formatMoney(line.gross)}</strong></p>
+      <p>Application cost: <strong>${formatNumber(line.applications)} x ${formatMoney(line.costPerApplication)} = ${formatMoney(line.charges)}</strong></p>
+      <p>Line final: <strong>${formatMoney(line.gross)} - ${formatMoney(line.charges)} = ${formatMoney(line.finalAmount)}</strong></p>
+    </div>
+  `;
+}
+
+function renderBalanceSummaries() {
+  const personBalances = buildGroupedBalances((entry) => `${entry.stockName || "-"}|||${entry.personName}`);
+  const stockBalances = buildGroupedBalances((entry) => entry.stockName || "-");
+
+  dom.personSummaryBody.innerHTML =
+    personBalances.length === 0
+      ? '<tr class="empty-row"><td colspan="4">No balances yet.</td></tr>'
+      : personBalances
+          .map((balance) => {
+            const [stockName, personName] = balance.key.split("|||");
+            return `
+              <tr>
+                <td>${escapeHtml(stockName)}</td>
+                <td>${escapeHtml(personName)}</td>
+                <td class="${getBalanceClass(balance.amount)}">${formatMoney(balance.amount)}</td>
+                <td>${getBalanceStatus(balance.amount)}</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+  dom.stockSummaryBody.innerHTML =
+    stockBalances.length === 0
+      ? '<tr class="empty-row"><td colspan="3">No stock totals yet.</td></tr>'
+      : stockBalances
+          .map((balance) => {
+            return `
+              <tr>
+                <td>${escapeHtml(balance.key)}</td>
+                <td class="${getBalanceClass(balance.amount)}">${formatMoney(balance.amount)}</td>
+                <td>${getBalanceStatus(balance.amount)}</td>
+              </tr>
+            `;
+          })
+          .join("");
+}
+
+function buildGroupedBalances(getKey) {
+  const balances = new Map();
+
+  state.entries.forEach((entry) => {
+    const key = getKey(entry);
+    balances.set(key, (balances.get(key) || 0) + getSignedAmount(entry));
+  });
+
+  return [...balances.entries()]
+    .map(([key, amount]) => ({ key, amount }))
+    .sort((a, b) => a.key.localeCompare(b.key));
 }
 
 // Print rendering
@@ -331,7 +551,7 @@ function renderPrintDetails(totals) {
       <p>Generated on ${new Date().toLocaleDateString("en-IN")}</p>
     </div>
     <div class="print-summary">
-      <div><span>Total final amount</span><strong>${formatMoney(totals.finalAmount)}</strong></div>
+      <div><span>Total settlement</span><strong>${formatMoney(totals.finalAmount)}</strong></div>
       <div><span>Total gross profit</span><strong>${formatMoney(totals.gross)}</strong></div>
       <div><span>Total charges</span><strong>${formatMoney(totals.charges)}</strong></div>
     </div>
@@ -340,6 +560,7 @@ function renderPrintDetails(totals) {
 }
 
 function renderPrintEntry(entry, index) {
+  const signedAmount = getSignedAmount(entry);
   const lineRows = entry.type === "Applications" ? renderPrintLineRows(entry.lines || []) : renderSimplePrintLine(entry);
 
   return `
@@ -347,12 +568,13 @@ function renderPrintEntry(entry, index) {
       <div class="print-entry-head">
         <div>
           <h3>${index + 1}. ${escapeHtml(entry.personName)}</h3>
-          <p>${escapeHtml(entry.stockName || "-")} | ${entry.date} | ${entry.type}</p>
+          <p>${escapeHtml(entry.stockName || "-")} | ${entry.date} | ${entry.type} | ${getDirectionLabel(entry.direction)}</p>
           ${entry.notes ? `<p>Notes: ${escapeHtml(entry.notes)}</p>` : ""}
         </div>
         <div class="print-entry-total">
-          <span>Final amount</span>
-          <strong>${formatMoney(entry.finalAmount)}</strong>
+          <span>Final settlement</span>
+          <strong>${formatMoney(signedAmount)}</strong>
+          <p>${getEntryResultStatusWithAmount(entry)}</p>
         </div>
       </div>
       <table class="print-line-table">
@@ -462,9 +684,11 @@ function saveFormEntry(event) {
     date: existingEntry?.date || new Date().toLocaleDateString("en-IN"),
     personName,
     stockName: textValue("#stockName"),
+    direction: textValue("#transactionType") || "sell",
     notes: textValue("#notes"),
     ...calculated,
   };
+  nextEntry.signedFinalAmount = getDirectionMultiplier(nextEntry.direction) * nextEntry.finalAmount;
 
   if (state.selectedEntryId) {
     state.entries = state.entries.map((entry) => (entry.id === state.selectedEntryId ? nextEntry : entry));
@@ -492,6 +716,7 @@ function fillFormFromEntry(entry) {
   state.selectedEntryId = entry.id;
   setField("#personName", entry.personName);
   setField("#stockName", entry.stockName);
+  setField("#transactionType", entry.direction || "sell");
   setField("#notes", entry.notes);
 
   if (entry.type === "Shares") {
@@ -535,16 +760,18 @@ function fillApplicationDealForm(entry) {
 function exportCsv() {
   if (state.entries.length === 0) return;
 
-  const headers = ["Date", "Person", "Stock", "Type", "Shares", "Gross", "Charges", "Final", "Details", "Notes"];
+  const headers = ["Date", "Person", "Stock", "Direction", "Type", "Shares", "Gross", "Charges", "Net", "Status", "Details", "Notes"];
   const rows = state.entries.map((entry) => [
     entry.date,
     entry.personName,
     entry.stockName,
+    getDirectionLabel(entry.direction),
     entry.type,
     entry.shares,
     entry.gross,
     entry.charges,
-    entry.finalAmount,
+    getSignedAmount(entry),
+    getEntryResultStatusWithAmount(entry),
     entry.details,
     entry.notes,
   ]);
@@ -568,6 +795,8 @@ dom.modeButtons.forEach((button) => {
 
 dom.form.addEventListener("input", updatePreview);
 dom.form.addEventListener("submit", saveFormEntry);
+dom.form.addEventListener("keydown", preventNumberStepKeys);
+dom.form.addEventListener("wheel", preventNumberWheelChange, { passive: false });
 
 document.querySelector("#resetBtn").addEventListener("click", resetForm);
 document.querySelector("#addApplicationLineBtn").addEventListener("click", () => {
@@ -591,6 +820,13 @@ document.querySelector("#clearAllBtn").addEventListener("click", () => {
 });
 
 dom.entriesBody.addEventListener("click", (event) => {
+  const calcButton = event.target.closest(".calc-btn");
+  if (calcButton) {
+    const entry = state.entries.find((item) => item.id === calcButton.dataset.id);
+    if (entry) openCalculationDetails(entry);
+    return;
+  }
+
   const button = event.target.closest(".delete-btn");
   if (button) {
     deleteEntry(button.dataset.id);
@@ -602,6 +838,14 @@ dom.entriesBody.addEventListener("click", (event) => {
 
   const entry = state.entries.find((item) => item.id === row.dataset.id);
   if (entry) fillFormFromEntry(entry);
+});
+
+document.querySelector("#closeCalculationBtn").addEventListener("click", closeCalculationDetails);
+dom.calculationModal.addEventListener("click", (event) => {
+  if (event.target === dom.calculationModal) closeCalculationDetails();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeCalculationDetails();
 });
 
 dom.dealRows.addEventListener("click", (event) => {
@@ -617,6 +861,18 @@ dom.dealRows.addEventListener("click", (event) => {
   }
   updatePreview();
 });
+
+function preventNumberStepKeys(event) {
+  if (event.target.type === "number" && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+    event.preventDefault();
+  }
+}
+
+function preventNumberWheelChange(event) {
+  if (event.target.type === "number" && document.activeElement === event.target) {
+    event.preventDefault();
+  }
+}
 
 // Start
 resetDealRows();

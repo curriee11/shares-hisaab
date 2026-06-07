@@ -28,6 +28,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -117,6 +118,18 @@ h2 {
   gap: 8px;
 }
 
+.mode-picker {
+  display: grid;
+  gap: 6px;
+}
+
+.mode-picker > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .segmented {
   padding: 4px;
   border: 1px solid var(--line);
@@ -149,6 +162,7 @@ textarea:focus-visible {
   min-height: 34px;
   color: var(--muted);
   background: transparent;
+  white-space: normal;
 }
 
 .segment.active {
@@ -320,6 +334,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -330,9 +345,24 @@ textarea {
   font-weight: 500;
 }
 
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: #98a2b3;
+}
+
+select {
+  min-height: 45px;
 }
 
 textarea {
@@ -398,6 +428,35 @@ textarea {
   margin-bottom: 16px;
 }
 
+.balance-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.balance-block {
+  min-width: 0;
+}
+
+.balance-block h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.mini-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.mini-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
 .table-wrap {
   max-width: 100%;
   overflow-x: auto;
@@ -411,7 +470,7 @@ textarea {
 
 table {
   width: 100%;
-  min-width: 760px;
+  min-width: 980px;
   border-collapse: collapse;
   background: #fff;
 }
@@ -472,6 +531,20 @@ tbody tr:hover td {
   background: #fff;
 }
 
+.action-cell {
+  display: grid;
+  gap: 6px;
+  min-width: 112px;
+}
+
+.calc-btn {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--brand-strong);
+  border-color: #9fd7cc;
+  background: var(--soft);
+}
+
 .remove-line-btn {
   min-height: 42px;
   width: 100%;
@@ -481,6 +554,114 @@ tbody tr:hover td {
   color: var(--muted);
   text-align: center;
   padding: 32px 12px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(16, 24, 40, 0.45);
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-panel {
+  width: min(760px, 100%);
+  max-height: min(86vh, 820px);
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.24);
+}
+
+.modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.modal-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.calculation-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.calc-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calc-summary div,
+.calc-section,
+.calc-line,
+.calc-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.calc-summary div {
+  padding: 10px;
+}
+
+.calc-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.calc-summary strong {
+  display: block;
+  margin-top: 5px;
+}
+
+.calc-note {
+  padding: 10px;
+  font-weight: 800;
+}
+
+.calc-section {
+  padding: 12px;
+}
+
+.calc-section h3,
+.calc-line h4 {
+  margin: 0 0 8px;
+}
+
+.calc-section p,
+.calc-line p {
+  margin: 5px 0;
+  color: #354052;
+}
+
+.calc-line {
+  padding: 10px;
+}
+
+.calc-line + .calc-line {
+  margin-top: 10px;
 }
 
 @media (max-width: 1060px) {
@@ -508,11 +689,13 @@ tbody tr:hover td {
   .three,
   .four,
   .preview,
-  .totals {
+  .totals,
+  .balance-sections {
     grid-template-columns: 1fr;
   }
 
   .segmented,
+  .mode-picker,
   .header-actions,
   .form-actions {
     width: 100%;
@@ -528,6 +711,14 @@ tbody tr:hover td {
   .deal-line {
     align-items: stretch;
     grid-template-columns: 1fr;
+  }
+
+  .calc-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-head {
+    flex-direction: column;
   }
 
   .section-head-row {
@@ -586,6 +777,16 @@ tbody tr:hover td {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 18px;
+  }
+
+  .balance-sections {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .mini-table,
+  .print-line-table {
+    min-width: 0;
   }
 
   .totals div,

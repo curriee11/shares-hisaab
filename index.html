@@ -24,11 +24,14 @@
         <div class="panel-head">
           <div>
             <h2 id="entryTitle">New Entry</h2>
-            <p>First select the deal type, then enter the numbers.</p>
+            <p>Select what this entry contains.</p>
           </div>
-          <div class="segmented" role="tablist" aria-label="Entry type">
-            <button class="segment active" type="button" data-mode="simple">Shares</button>
-            <button class="segment" type="button" data-mode="application">Applications</button>
+          <div class="mode-picker">
+            <span>Entry type</span>
+            <div class="segmented" role="tablist" aria-label="Entry type">
+              <button class="segment active" type="button" data-mode="simple">Direct shares</button>
+              <button class="segment" type="button" data-mode="application">Application / mixed deal</button>
+            </div>
           </div>
         </div>
 
@@ -38,14 +41,21 @@
               <span>1</span>
               <strong>Basic details</strong>
             </div>
-            <div class="grid two">
+            <div class="grid three">
               <label>
                 Person name
                 <input id="personName" name="personName" placeholder="Example: B person" required />
               </label>
               <label>
                 Stock / IPO name
-                <input id="stockName" name="stockName" placeholder="Example: ABC IPO" />
+                <input id="stockName" name="stockName" placeholder="Example: NHPC" />
+              </label>
+              <label>
+                Deal direction
+                <select id="transactionType" name="transactionType">
+                  <option value="sell">We sold to this person</option>
+                  <option value="buy">We bought from this person</option>
+                </select>
               </label>
             </div>
           </div>
@@ -54,7 +64,7 @@
             <div class="form-section">
               <div class="section-title">
                 <span>2</span>
-                <strong>Share sale details</strong>
+                <strong>Direct share details</strong>
               </div>
               <div class="grid three">
                 <label>
@@ -78,7 +88,7 @@
             <div class="form-section">
               <div class="section-title">
                 <span>2</span>
-                <strong>Application lines</strong>
+                <strong>Applications and shares</strong>
               </div>
               <div class="section-head-row">
                 <p class="formula-text">Add applications first. After that, add another application or direct shares if needed.</p>
@@ -120,7 +130,7 @@
               <strong id="previewCharges">Rs 0.00</strong>
             </div>
             <div class="highlight">
-              <span>Final amount</span>
+              <span>Final settlement</span>
               <strong id="previewFinal">Rs 0.00</strong>
             </div>
           </div>
@@ -143,7 +153,7 @@
 
         <div class="totals">
           <div>
-            <span>Total final amount</span>
+            <span>Total settlement</span>
             <strong id="totalFinal">Rs 0.00</strong>
           </div>
           <div>
@@ -156,23 +166,68 @@
           </div>
         </div>
 
+        <div class="balance-sections">
+          <section class="balance-block">
+            <h3>Person wise net</h3>
+            <div class="mini-table-wrap">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Stock / IPO</th>
+                    <th>Person</th>
+                    <th>Net</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="personSummaryBody">
+                  <tr class="empty-row">
+                    <td colspan="4">No balances yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="balance-block">
+            <h3>Stock wise net</h3>
+            <div class="mini-table-wrap">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Stock / IPO</th>
+                    <th>Net</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="stockSummaryBody">
+                  <tr class="empty-row">
+                    <td colspan="3">No stock totals yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Date</th>
                 <th>Person</th>
+                <th>Stock</th>
+                <th>Direction</th>
                 <th>Type</th>
                 <th>Shares</th>
                 <th>Gross</th>
                 <th>Charges</th>
-                <th>Final</th>
+                <th>Settlement</th>
                 <th class="no-print">Action</th>
               </tr>
             </thead>
             <tbody id="entriesBody">
               <tr class="empty-row">
-                <td colspan="8">Add the first entry to start the hisab.</td>
+                <td colspan="10">Add the first entry to start the hisab.</td>
               </tr>
             </tbody>
           </table>
@@ -181,6 +236,19 @@
         <div class="print-details" id="printDetails"></div>
       </section>
     </main>
+
+    <div class="modal hidden" id="calculationModal" role="dialog" aria-modal="true" aria-labelledby="calculationTitle">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <div>
+            <h2 id="calculationTitle">Calculation details</h2>
+            <p id="calculationSubtitle"></p>
+          </div>
+          <button class="secondary" id="closeCalculationBtn" type="button">Close</button>
+        </div>
+        <div class="calculation-body" id="calculationBody"></div>
+      </div>
+    </div>
 
     <script src="app.js"></script>
   </body>
